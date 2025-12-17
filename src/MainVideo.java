@@ -11,7 +11,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class MainVideo extends JFrame{
-    private static int liveCounter = 0; // Counter only works while live. Change name of important saves
+    public static int liveCounter = 0; // Counter only works while live. Change name of important saves
 
     private static JPanel panel;
     private static JLabel cam;
@@ -56,7 +56,7 @@ public class MainVideo extends JFrame{
         panel.setVisible(true);
         this.add(panel);
         this.setVisible(true);
-        this.setSize(900,400);
+        this.setSize(900,600);
         this.setLocationRelativeTo(null);
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
 //        this.pack();
