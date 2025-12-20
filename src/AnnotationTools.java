@@ -5,32 +5,42 @@ import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.*;
+import java.lang.reflect.InaccessibleObjectException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 
 /**
- * This Class is just a test on shapes and savings
- * also serves as a template for saving Mats
+ * Replication of ImageManipulation.java, more usage of this class and MetaData features
  */
-public class ImageManipulation extends JFrame {
-    private Point originalPt;
+public class AnnotationTools extends JFrame {
+    private static Point originalPt;
     private Point optimizedPt;
     private Mat imageMat,tempM;
     private JLabel image;
     private JButton saveImage;
     private int slope = 0;
-    private boolean circleC,lineC = false;
-    private String name, fileName;
+    private boolean circleC;
+    private boolean lineC;
+    private  String name, fileName;
 
-    public ImageManipulation(){
+    private static ArrayList<String> actions = new ArrayList<String>();
+
+
+    public AnnotationTools(){
         this.setLayout(null);
 
+        //GUI implementation and initialization
         name = "Image0";
         fileName = "Images\\" + name + ".jpg";
-
+        //Setting up Mat by reading a file that is currently predetermined for testing
         imageMat = Imgcodecs.imread(fileName);
 
         saveImage = new JButton("Save");
@@ -42,10 +52,11 @@ public class ImageManipulation extends JFrame {
         saveImage.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                name = "Copy" + name;
-                fileName = "Images\\" + name + ".jpg";;
+                name = "Annotation_Copy_" + name;
+                fileName = "Images\\" + name + ".jpg";
                 System.out.println(fileName);
                 Imgcodecs.imwrite(fileName,imageMat);
+                saveMetaData();
             }
         });
 
@@ -80,22 +91,25 @@ public class ImageManipulation extends JFrame {
                 else if(e.getButton() == 3){
                     lineC = true;
                 }
+                System.out.println("Saved");
+                imageMat = tempM;
+                Imgcodecs.imencode(".jpg",imageMat,matB);
+                image.setIcon(new ImageIcon(matB.toArray()));
                 System.out.println(originalPt);
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 super.mouseReleased(e);
-                //Wheel click
-                if(e.getButton() == 2){
-                    //saving info
-                    System.out.println("Saved");
-                    imageMat = tempM;
-                    Imgcodecs.imencode(".jpg",imageMat,matB);
-                    image.setIcon(new ImageIcon(matB.toArray()));
+                if(e.getButton() == 1) {
+                    circleC = false;
+                    actions.add("Circle,"+slope + "," + (int)originalPt.x +","+(int)originalPt.y);
                 }
-                circleC = false;
-                lineC = false;
+                //Right click
+                else if(e.getButton() == 3){
+                    lineC = false;
+                    actions.add("Line,"+slope + "," + (int)originalPt.x +","+(int)originalPt.y);
+                }
             }
         });
 
@@ -103,7 +117,7 @@ public class ImageManipulation extends JFrame {
             @Override
             public void mouseDragged(MouseEvent e) {
                 super.mouseDragged(e);
-                //Update everytime we drag so that the previous circle when moving doesnt save
+                //Update everytime we drag so that the previous circle when moving doesn't save
                 tempM = imageMat.clone();
                 System.out.println("dragging");
                 optimizedPt = new Point(e.getX(), e.getY());
@@ -124,8 +138,26 @@ public class ImageManipulation extends JFrame {
         add(image);
     }
 
+    private static void saveMetaData(){
+        //Using predetermined file
+        File fileLocation = new File("Images\\Data_Annotation_Copy_Image0.txt");
+
+        //Write metadata of actions
+        try(FileWriter writer = new FileWriter(fileLocation,true)){
+            writer.write("\n");
+            for(String s : actions){
+                writer.write(s);
+                writer.write("\n");
+            }
+            System.out.println("Adding data");
+        }
+        catch(IOException e){
+            System.out.println(e.getMessage());
+        }
+    }
+
     public static void main(String[] args){
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-        ImageManipulation e = new ImageManipulation();
+        AnnotationTools e = new AnnotationTools();
     }
 }
