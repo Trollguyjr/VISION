@@ -103,11 +103,13 @@ public class AnnotationTools extends JFrame {
                 super.mouseReleased(e);
                 if(e.getButton() == 1) {
                     circleC = false;
+                    // Shape, radius, Center X pt, Center Y pt
                     actions.add("Circle,"+slope + "," + (int)originalPt.x +","+(int)originalPt.y);
                 }
                 //Right click
                 else if(e.getButton() == 3){
                     lineC = false;
+                    // Shape, Length, Starting X pt, Starting Y pt
                     actions.add("Line,"+slope + "," + (int)originalPt.x +","+(int)originalPt.y);
                 }
             }
