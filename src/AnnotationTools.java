@@ -92,10 +92,7 @@ public class AnnotationTools extends JFrame {
                     lineC = true;
                 }
                 System.out.println("Saved");
-                imageMat = tempM;
-                Imgcodecs.imencode(".jpg",imageMat,matB);
-                image.setIcon(new ImageIcon(matB.toArray()));
-                System.out.println(originalPt);
+
             }
 
             @Override
@@ -103,15 +100,19 @@ public class AnnotationTools extends JFrame {
                 super.mouseReleased(e);
                 if(e.getButton() == 1) {
                     circleC = false;
-                    // Shape, radius, Center X pt, Center Y pt
-                    actions.add("Circle,"+slope + "," + (int)originalPt.x +","+(int)originalPt.y);
+                    // Shape, radius, Center pt, End pt
+                    actions.add("Circle,"+slope + "," + originalPt +","+ optimizedPt);
                 }
                 //Right click
                 else if(e.getButton() == 3){
                     lineC = false;
-                    // Shape, Length, Starting X pt, Starting Y pt
-                    actions.add("Line,"+slope + "," + (int)originalPt.x +","+(int)originalPt.y);
+                    // Shape, Length, Starting pt, End pt
+                    actions.add("Line,"+slope + "," + originalPt +","+ optimizedPt);
                 }
+                imageMat = tempM;
+//                Imgcodecs.imencode(".jpg",imageMat,matB);
+//                image.setIcon(new ImageIcon(matB.toArray()));
+//                System.out.println(originalPt);
             }
         });
 

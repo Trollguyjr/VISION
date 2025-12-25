@@ -1,7 +1,4 @@
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
-import org.opencv.core.Rect;
+import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -36,7 +33,9 @@ public class ROIExtract {
     private static void loadData(){
         try(Scanner reader = new Scanner(new File("Images\\Data_Annotation_Copy_Image0.txt"))){
             System.out.println("start");
+            int counter = 0;
             while(reader.hasNextLine()){
+                counter++;
                 String currentROI = reader.nextLine();
                 System.out.println("in " + currentROI);
                 if(currentROI.isEmpty()){
@@ -44,24 +43,58 @@ public class ROIExtract {
                 }
                 //Simplifies storing information into objects
                 String[] currROI = currentROI.split(",");
+
                 // This is easier to store information compared to Storing an ArrayList inside an ArrayList
-                ROI roi1 = new ROI(currROI[0],Integer.parseInt(currROI[1]),
-                        Integer.parseInt(currROI[2]),Integer.parseInt(currROI[3]));
+                // The index will never go out of bounds, therefore this is acceptable
+                // also splits the {X,Y} Points so combining string is necessary
+                double[] xValues = new double[]{Double.parseDouble(currROI[2].replace("{","").trim())
+                        , Double.parseDouble(currROI[4].replace("{","").trim())};
+                double[] yValues = new double[]{Double.parseDouble(currROI[3].replace("}","").trim())
+                        , Double.parseDouble(currROI[5].replace("}","").trim())};
+
+                // Restore pts to get Rectangle size
+                Point currPt = new Point(xValues[0],yValues[0]);
+//                System.out.println(currPt + "PT");
+                Point endPt = new Point(xValues[1],yValues[1]);
+//                System.out.println(endPt + "PT");
+                ROI roi1 = new ROI(currROI[0],Integer.parseInt(currROI[1]),currPt,endPt);
 
                 ROIs.add(roi1);
                 //Will only show memory location, use ROIs.get(#).(objectsIdentifier) to get specifics
                 System.out.println(ROIs);
+                System.out.println(counter);
             }
         }
         catch(Exception e){
-            System.out.println(e.getMessage());
+            System.out.println("ERROR: " + e.getMessage());
         }
     }
 
     //@TODO ADD FEATURE THAT CROPS IMAGES BASED ON THE DATA
     private static void cropSubImages(){
+        int counter = 0;
         for(ROI r : ROIs){
-
+            if(r.shape.equals("Circle")){
+                String subFile = "Images\\SubImages\\Image0_subImage"+counter;
+                // (Leftmost pixel)int x pt, (Topmost)int y pt, int width, int height
+                // length represents the radius of the circle
+                //+10 to add padding for the circle thickness
+                int padding = 10;
+                Mat subMats = imageMat.submat(new Rect((int)(r.centerPt.x - r.length) + padding/2,(int)(r.centerPt.y - r.length) + padding/2
+                        ,2*r.length+padding,2*r.length+padding));
+                Imgcodecs.imwrite(subFile+".jpg",subMats);
+            }
+            else if(r.shape.equals("Line")){
+                double centerX = r.centerPt.x;
+                double centerY = r.centerPt.y;
+                double endX = r.endPt.x;
+                double endY = r.endPt.y;
+                int padding = 10;
+                Mat subMats = imageMat.submat(new Rect((int)Math.min(centerX,endX) + padding/2
+                        , (int)Math.min(centerY,endY) + padding/2, (int)(Math.max(centerX,endX) - Math.min(centerX,endX)) + padding
+                        , (int)(Math.max(centerY,endY) - Math.min(centerY,endY)) + padding));
+            }
+            counter++;
         }
     }
 
@@ -70,14 +103,14 @@ public class ROIExtract {
     private static class ROI{
         private String shape;
         private int length;
-        private int x;
-        private int y;
+        private Point centerPt;
+        private Point endPt;
 
-        public ROI(String shape, int length, int x, int y){
+        public ROI(String shape, int length, Point centerPt, Point endPt){
             this.shape = shape;
             this.length = length;
-            this.x = x;
-            this.y = y;
+            this.centerPt = centerPt;
+            this.endPt = endPt;
         }
     }
 
