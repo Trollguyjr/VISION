@@ -19,11 +19,12 @@ public class ROIExtract {
     public ROIExtract(){}
 
     private static void runImage(){
-        name = "Image0";
+        name = "Annotation_Copy_Image0";
         fileName = "Images\\"+name+".jpg";
         try {
             imageMat = Imgcodecs.imread(fileName);
             loadData();
+            cropSubImages();
         }
         catch(Exception e){
             System.out.println(e.getMessage());
@@ -80,19 +81,67 @@ public class ROIExtract {
                 // length represents the radius of the circle
                 //+10 to add padding for the circle thickness
                 int padding = 10;
-                Mat subMats = imageMat.submat(new Rect((int)(r.centerPt.x - r.length) + padding/2,(int)(r.centerPt.y - r.length) + padding/2
-                        ,2*r.length+padding,2*r.length+padding));
-                Imgcodecs.imwrite(subFile+".jpg",subMats);
+
+                // Center - Radius = leftMostPt/TopmostPt - Thickness of Circle(Shift slightly)
+                int rawX = (int)(r.centerPt.x - r.length - padding/2);
+                int rawY = (int)(r.centerPt.y - r.length - padding/2);
+
+                //Entire length of Rectangle based on diameter and thickness
+                int rawW = (int) (2 * r.length + padding);
+                int rawH = (int) (2 * r.length + padding);
+
+                // Cannot go below 0 since that would not exist in a matrix
+                int x = Math.max(0,rawX);
+                int y = Math.max(0,rawY);
+
+                // Cant go over the max of the original image incase the rectangle goes over the boundary
+                // Subtract x/y to ensure that the rectangle pops outside Image despite the X and Y being valid
+                int w = Math.min(rawW,imageMat.cols() - x);
+                int h = Math.min(rawH,imageMat.rows() - y);
+                try{
+                    Mat subMats = imageMat.submat(new Rect(x, y, w, h));
+                    if(w > 0 && h > 0){
+                        Imgcodecs.imwrite(subFile+".jpg",subMats);
+                    }
+                }
+                catch(Exception e){
+                    System.out.println(e.getMessage());
+                }
             }
             else if(r.shape.equals("Line")){
+                String subFile = "Images\\SubImages\\Image0_subImage"+counter;
+                int padding = 10;
+
+                // Simplified values
                 double centerX = r.centerPt.x;
                 double centerY = r.centerPt.y;
                 double endX = r.endPt.x;
                 double endY = r.endPt.y;
-                int padding = 10;
-                Mat subMats = imageMat.submat(new Rect((int)Math.min(centerX,endX) + padding/2
-                        , (int)Math.min(centerY,endY) + padding/2, (int)(Math.max(centerX,endX) - Math.min(centerX,endX)) + padding
-                        , (int)(Math.max(centerY,endY) - Math.min(centerY,endY)) + padding));
+
+                // Get whichever value is smallest
+                int rawX = (int)Math.min(centerX,endX) - padding/2;
+                int rawY = (int)Math.min(centerY,endY) - padding/2;
+
+                // gets length based on subtractions + padding of line
+                int rawW = (int)(Math.max(centerX,endX) - Math.min(centerX,endX)) + padding;
+                int rawH = (int)(Math.max(centerY,endY) - Math.min(centerY,endY)) + padding;
+
+                // makes sure it exits/is valid
+                int x = Math.max(0,rawX);
+                int y = Math.max(0,rawY);
+
+                // Makes sure it doesn't go above the specified columns/rows
+                int w = Math.min(rawW,imageMat.cols() - x);
+                int h = Math.min(rawH,imageMat.rows() - y);
+                try{
+                    Mat subMats = imageMat.submat(new Rect(x,y,w,h));
+                    if(w > 0 && h > 0){
+                        Imgcodecs.imwrite(subFile+".jpg",subMats);
+                    }
+                }
+                catch (Exception e){
+                    System.out.println(e.getMessage());
+                }
             }
             counter++;
         }
