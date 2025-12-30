@@ -71,7 +71,6 @@ public class ROIExtract {
         }
     }
 
-    //@TODO ADD FEATURE THAT CROPS IMAGES BASED ON THE DATA
     private static void cropSubImages(){
         int counter = 0;
         for(ROI r : ROIs){
