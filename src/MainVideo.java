@@ -1,6 +1,7 @@
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
@@ -17,7 +18,7 @@ public class MainVideo extends JFrame{
     private static JLabel cam;
     private static JLabel cam2;
 
-    private static Mat mats, grayScale; // captures images
+    private static Mat mats, grayScale, blurScale, edgeScale, lineScale,circleScale; // captures images
     private static VideoCapture vid; // live camera feed
 
     private static JButton save;
@@ -67,6 +68,10 @@ public class MainVideo extends JFrame{
         vid = new VideoCapture(0); // starts camera
         mats = new Mat(); // creates empty "Image" or matrices
         grayScale = new Mat();
+        blurScale = new Mat();
+        edgeScale = new Mat();
+        lineScale = new Mat();
+        circleScale = new Mat();
 
         System.out.println("check2");
 
@@ -81,13 +86,17 @@ public class MainVideo extends JFrame{
             while(vid.isOpened()){
                 if(vid.read(mats)){
 
+                    //@TODO ADD COMMENTS AND FINISH THE CONFIGURATION FOR DETECTING
                     Core.flip(mats,mats,+1); // flips image as a reflection instead of inverted
                     Imgproc.cvtColor(mats,grayScale,Imgproc.COLOR_BGR2GRAY);
-
+                    Imgproc.GaussianBlur(grayScale,blurScale,new Size(3,3),0);
+                    Imgproc.Canny(blurScale,edgeScale,50,100);
+                    Imgproc.HoughCircles(edgeScale,circleScale,50,1,20);
+//                    Imgproc.HoughLines(edgeScale,lineScale);
                     System.out.println("loading");
 
                     Imgcodecs.imencode(".jpg",mats,matB); // Makes image into jpg type
-                    Imgcodecs.imencode(".jpg",grayScale,matGray);
+                    Imgcodecs.imencode(".jpg",edgeScale,matGray);
 
 
                     ImageIcon icon = new ImageIcon(matB.toArray()); // makes image with Bytes and updating with every loop
