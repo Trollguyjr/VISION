@@ -1,10 +1,8 @@
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
-import org.opencv.core.Size;
+import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.core.Point;
 
 import javax.swing.*;
 import java.awt.*;
@@ -91,13 +89,44 @@ public class MainVideo extends JFrame{
                     Imgproc.cvtColor(mats,grayScale,Imgproc.COLOR_BGR2GRAY);
                     Imgproc.GaussianBlur(grayScale,blurScale,new Size(3,3),0);
                     Imgproc.Canny(blurScale,edgeScale,50,100);
-                    Imgproc.HoughCircles(edgeScale,circleScale,50,1,20);
-//                    Imgproc.HoughLines(edgeScale,lineScale);
+//                    Imgproc.HoughCircles(edgeScale,circleScale,Imgproc.HOUGH_GRADIENT_ALT,1,20);
+
+                    // lineScale returns --> rho(Distance), and Angle(theta)
+                    Imgproc.HoughLines(edgeScale,lineScale,1,Math.PI/180,150);
                     System.out.println("loading");
 
+                    System.out.println(lineScale.cols() + " " + lineScale.rows());
+                    /*
+                     * Math Concept -- Linear Algebra:
+                     * Basically theta represents the angle/direction of the Normal line on a graph
+                     * n-vector = (cos(theta),sin(theta))
+                     *
+                     * p = distance of line along the vector from origin
+                     * Dir = ( -sin(theta) , cos(theta) ), it is -sin b/c normal vector(n-vector) is perpendicular
+                     *
+                     * rho is the perpendicular length through n-vector and origin
+                     *
+                     * Perpendicular Eq:
+                     * (x,y) = ( p * cos(theta) , p * sin(theta) )
+                     *
+                     * Point Calculations:
+                     * a = cos(theta)
+                     * b = sin(theta)
+                     * x0 = a * p -- Gets pt based on the direction and length of vector
+                     * y0 = b * p
+                     *
+                     * We get points using the regular vector
+                     * pt1 = (x0 + 1000 * (-b) , y0 + 1000 * a)
+                     * pt2 = (x0 - 1000 * (-b) , y0 - 1000 * a)
+                     */
+                    if(!lineScale.empty()) {
+                        for(int i = 0; i < lineScale.cols(); i++){
+                            double[] values = lineScale.get(0,i); // checks which angle matches: {rho, theta}
+
+                        }
+                    }
                     Imgcodecs.imencode(".jpg",mats,matB); // Makes image into jpg type
                     Imgcodecs.imencode(".jpg",edgeScale,matGray);
-
 
                     ImageIcon icon = new ImageIcon(matB.toArray()); // makes image with Bytes and updating with every loop
                     ImageIcon icon2 = new ImageIcon(matGray.toArray());

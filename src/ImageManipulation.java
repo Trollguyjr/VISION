@@ -108,7 +108,7 @@ public class ImageManipulation extends JFrame {
                 System.out.println("dragging");
                 optimizedPt = new Point(e.getX(), e.getY());
                 //Distance formula
-                slope = (int) Math.sqrt(Math.pow(optimizedPt.x - originalPt.x, 2) + Math.pow(optimizedPt.y - originalPt.y, 2));
+                slope = (int)Math.sqrt(Math.pow(optimizedPt.x - originalPt.x, 2) + Math.pow(optimizedPt.y - originalPt.y, 2));
                 if(circleC) {
                     Imgproc.circle(tempM, originalPt, slope, new Scalar(255, 0, 0), 10);
                     Imgcodecs.imencode(".jpg", tempM, matB);
