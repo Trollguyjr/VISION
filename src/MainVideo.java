@@ -9,8 +9,17 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+
 public class MainVideo extends JFrame{
     public static int liveCounter = 0; // Counter only works while live. Change name of important saves
+
+    private static final int VERT_ANGLE_1 = 165;
+    private static final int VERT_ANGLE_2 = 15;
+
+    private static final int HORIZ_ANGLE_1 = 105;
+    private static final int HORIZ_ANGLE_2 = 65;
 
     private static JPanel panel;
     private static JLabel cam;
@@ -89,10 +98,9 @@ public class MainVideo extends JFrame{
                     Imgproc.cvtColor(mats,grayScale,Imgproc.COLOR_BGR2GRAY);
                     Imgproc.GaussianBlur(grayScale,blurScale,new Size(3,3),0);
                     Imgproc.Canny(blurScale,edgeScale,50,100);
-//                    Imgproc.HoughCircles(edgeScale,circleScale,Imgproc.HOUGH_GRADIENT_ALT,1,20);
 
                     // lineScale returns --> rho(Distance), and Angle(theta)
-                    Imgproc.HoughLines(edgeScale,lineScale,1,Math.PI/180,150);
+//                    Imgproc.HoughLines(edgeScale,lineScale,0.5,Math.PI/180,5);
                     System.out.println("loading");
 
                     System.out.println(lineScale.cols() + " " + lineScale.rows());
@@ -119,12 +127,27 @@ public class MainVideo extends JFrame{
                      * pt1 = (x0 + 1000 * (-b) , y0 + 1000 * a)
                      * pt2 = (x0 - 1000 * (-b) , y0 - 1000 * a)
                      */
-                    if(!lineScale.empty()) {
-                        for(int i = 0; i < lineScale.cols(); i++){
-                            double[] values = lineScale.get(0,i); // checks which angle matches: {rho, theta}
 
+
+                    if(!mats.empty()) {
+                        for(int i = 0; i < lineScale.cols(); i++){
+                            Imgproc.HoughLinesP(mats,lineScale,1,Math.PI/180,100,25);
+                            double[] values = lineScale.get(0,i); // checks which angle matches: {rho, theta}
+                            System.out.println("We are doing somethings");
+
+                            Point pt1 = new Point(values[0],values[1]);
+                            Point pt2 = new Point(values[2],values[3]);
+
+                            Lines l = new Lines(pt1,pt2);
+
+                            Imgproc.line(mats,pt1,pt2,new Scalar(255,0,0),3);
+
+                            System.out.println("We are writing to mats");
+//                            Imgproc.line(mats, pt1, pt2, new Scalar(255,0,0));
+                            Imgcodecs.imwrite(".jpg", mats);
                         }
                     }
+
                     Imgcodecs.imencode(".jpg",mats,matB); // Makes image into jpg type
                     Imgcodecs.imencode(".jpg",edgeScale,matGray);
 
@@ -155,5 +178,42 @@ public class MainVideo extends JFrame{
         MainVideo.Run();
 
         System.out.println("loaded");
+    }
+
+    public static class Lines{
+        private double rho;
+        private double theta;
+        private Point pt1;
+        private Point pt2;
+
+        public Lines(double rho, double theta){
+            this.rho = rho;
+            this.theta  = theta;
+        }
+
+        public Lines(Point pt1, Point pt2){
+            this.pt1 = pt1;
+            this.pt2 = pt2;
+        }
+
+        public double angle(){
+            return Math.toDegrees(theta);
+        }
+
+        public double angle(double theta){
+            this.theta = theta;
+            return Math.toDegrees(theta);
+        }
+
+        public double distance(){
+            return rho;
+        }
+
+        public Point getPt1(){
+            return pt1;
+        }
+        public Point getPt2(){
+            return pt2;
+        }
     }
 }
