@@ -12,17 +12,10 @@ import java.awt.event.ActionListener;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainVideo extends JFrame{
     public static int liveCounter = 0; // Counter only works while live. Change name of important saves
-
-    private static final int VERT_INT = 1;
-    private static final int HORIZ_INT = -1;
-    private static final int VERT_ANGLE_1 = 90;
-    private static final int VERT_ANGLE_2 = 80;
-
-    private static final int HORIZ_ANGLE_1 = 105;
-    private static final int HORIZ_ANGLE_2 = 10;
 
     private static JPanel panel;
     private static JLabel cam;
@@ -34,6 +27,8 @@ public class MainVideo extends JFrame{
     private static JButton save;
 
     private static boolean saved = false; // One image saved instead of 100 in one press
+
+    private static final double MIN_AREA = 100;
 
     public MainVideo(){
         panel = new JPanel();
@@ -59,7 +54,6 @@ public class MainVideo extends JFrame{
         });
         save.setVisible(true);
 
-
         panel.add(cam);
         panel.add(cam2);
         panel.add(save);
@@ -72,29 +66,8 @@ public class MainVideo extends JFrame{
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
 //        this.pack();
     }
-    private static Vector lineToVector(Lines l){
-        double a = l.getPt2().y - l.getPt1().y;
-        double b = l.getPt2().x - l.getPt1().x;
-        double c = l.getPt2().x * l.getPt1().y - l.getPt1().x * l.getPt2().y;
-        Vector v = new Vector(a,b,c);
-        v.magnitude = Math.sqrt((a*a) + (b*b));
 
-        return v;
-    }
 
-    private static int lineChecker(Lines l){
-
-        // Bad magic number will change later
-        if(Math.abs(l.angleD()) > VERT_ANGLE_2 && l.length > 30){
-            return VERT_INT;
-        }
-        else if(Math.abs(l.angleD()) < 10 && l.length > 30){
-            return HORIZ_INT;
-        }
-        else{
-            return 0;
-        }
-    }
     private static void Run(){
         System.out.println("Checkeck");
         vid = new VideoCapture(0); // starts camera
@@ -123,128 +96,27 @@ public class MainVideo extends JFrame{
                     Imgproc.cvtColor(mats,grayScale,Imgproc.COLOR_BGR2GRAY);
                     Imgproc.GaussianBlur(grayScale,blurScale,new Size(3,3),0);
                     Imgproc.Canny(blurScale,edgeScale,50,100);
-
-                    // lineScale returns --> rho(Distance), and Angle(theta)
-                    // Imgproc.HoughLines(edgeScale,lineScale,0.5,Math.PI/180,5);
                     System.out.println("loading");
 
-                    System.out.println(lineScale.cols() + " " + lineScale.rows());
-                    /*
-                     * Math Concept -- Linear Algebra:
-                     * Basically theta represents the angle/direction of the Normal line on a graph
-                     * n-vector = (cos(theta),sin(theta))
-                     *
-                     * p = distance of line along the vector from origin
-                     * Dir = ( -sin(theta) , cos(theta) ), it is -sin b/c normal vector(n-vector) is perpendicular
-                     *
-                     * rho is the perpendicular length through n-vector and origin
-                     *
-                     * Perpendicular Eq:
-                     * (x,y) = ( p * cos(theta) , p * sin(theta) )
-                     */
+                    // Will store all the points that are graphed
+                    List<MatOfPoint> contours = new ArrayList<>();
 
-                    Imgproc.HoughLinesP(edgeScale,lineScale,1,Math.PI/180,50,20);
+                    // Should contain all the
+                    Mat hierarchy = new Mat();
+                    //CHAIN_APPROX... simplifies the mapping of items, E.g. if rectangle: only maps 4 corners
+                    //when hieararchy is mapped
+                    Imgproc.findContours(edgeScale,contours,hierarchy,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
 
-                    ArrayList<Lines> vertLine = new ArrayList<>();
-                    ArrayList<Lines> vertLineSorted = new ArrayList<>();
+                    for(MatOfPoint m : contours){
+                        //Contour error, function takes in Mat
+                        double actualArea = Imgproc.contourArea(m);
 
-                    ArrayList<Lines> horizLine = new ArrayList<>();
-                    ArrayList<Lines> horizLineSorted = new ArrayList<>();
-
-                    ArrayList<Lines> vertLineV = new ArrayList<>();
-                    ArrayList<Lines> horizLineV = new ArrayList<>();
-                    if(!lineScale.empty()) {
-                        for(int i = 0; i < lineScale.rows(); i++){
-                            double[] values = lineScale.get(i,0); // checks which angle matches: {rho, theta}
-                            System.out.println("We are doing somethings");
-
-                            Point pt1 = new Point(values[0],values[1]);
-                            Point pt2 = new Point(values[2],values[3]);
-
-                            Lines l = new Lines(pt1,pt2);
-
-                            // Hypotenuse formula using point
-                            double theta = Math.atan2(pt2.y - pt1.y,pt2.x - pt1.x);
-                            System.out.println(Math.toDegrees(theta));
-                            // distance formula
-                            double length = Math.sqrt(((pt2.x - pt1.x)*(pt2.x - pt1.x))+((pt2.y - pt1.y)*(pt2.y - pt1.y)));
-                            l.setLength(length);
-                            l.angleR(theta);
-
-//                            Vector v = lineToVector(l);
-
-                            switch(lineChecker(l)){
-                                case VERT_INT:
-                                    // Minimum of 2
-                                    vertLine.add(l);
-                                    break;
-                                case HORIZ_INT:
-                                    horizLine.add(l);
-                                    break;
-                                default:
-                                    break;
-                            };
+                        Rect rectBound = Imgproc.boundingRect(m);
+                        double rectArea = rectBound.height * rectBound.width;
+                        if(rectArea >= actualArea && rectArea >= MIN_AREA){
+                            System.out.println("Doing something trust: " + rectArea);
+                            Imgproc.drawContours(mats,contours,-1,new Scalar(0,0,255));
                         }
-                    }
-                    while(vertLine.size() > 1){
-                        Lines base = vertLine.get(0);
-                        double baseMidX = (base.pt1.x + base.pt2.x)/2;
-                        boolean merged = false;
-
-                        for(int i = 1; i < vertLine.size(); i++) {
-                            Lines otherLine = vertLine.get(i);
-                            double otherMidX = (otherLine.pt1.x + otherLine.pt2.x) / 2;
-
-                            boolean perpDistance = Math.abs((baseMidX) - (otherMidX)) < 10;
-
-                            if (perpDistance) {
-                                Lines confirmedLine = new Lines(base.pt1, otherLine.pt2);
-                                vertLineSorted.add(confirmedLine);
-                                System.out.println("Sorted LINE-----------");
-
-                                merged = true;
-                                vertLine.remove(i);
-                                vertLine.remove(0);
-                                break;
-                            }
-                        }
-                        if(!merged){
-                            vertLine.remove(0);
-                        }
-                    }
-
-                    while(horizLine.size() > 1){
-                        Lines base = horizLine.get(0);
-                        double baseMidY = (base.pt1.y + base.pt2.y)/2;
-                        boolean merged = false;
-
-                        for(int j = 1; j < horizLine.size(); j++){
-
-                            Lines otherLine = horizLine.get(j);
-                            double otherMidY = (otherLine.pt1.y + otherLine.pt2.y)/2;
-
-                            boolean perpDistance = Math.abs((baseMidY) - (otherMidY)) < 10;
-
-                            if(perpDistance){
-                                Lines confirmedLine = new Lines(base.pt1, otherLine.pt2);
-                                horizLineSorted.add(confirmedLine);
-                                System.out.println("Sorted LINE-----------");
-
-                                merged = true;
-                                horizLine.remove(j);
-                                horizLine.remove(0);
-                                break;
-                            }
-                        }
-                        if(!merged){
-                            horizLine.remove(0);
-                        }
-                    }
-                    for(Lines l : horizLineSorted){
-                        Imgproc.line(mats,l.pt1,l.pt2,new Scalar(255,0,0),10);
-                    }
-                    for(Lines l : vertLineSorted){
-                        Imgproc.line(mats,l.pt1,l.pt2,new Scalar(0,0,255),10);
                     }
 
                     Imgcodecs.imencode(".jpg",mats,matB); // Makes image into jpg type
@@ -279,69 +151,4 @@ public class MainVideo extends JFrame{
         System.out.println("loaded");
     }
 
-    public static class Lines{
-        private double rho;
-        private double theta;
-        private Point pt1;
-        private Point pt2;
-        public double length;
-
-        public Lines(double rho, double theta){
-            this.rho = rho;
-            this.theta  = theta;
-        }
-
-        public Lines(Point pt1, Point pt2){
-            this.pt1 = pt1;
-            this.pt2 = pt2;
-        }
-
-        public void setLength(double length){
-            this.length = length;
-        }
-
-        public double getLength(){
-            return length;
-        }
-
-        public double angleD(){
-            return theta;
-        }
-
-        public double angleR(double theta){
-            this.theta = theta;
-            return Math.toDegrees(theta);
-        }
-
-        public double distance(){
-            return rho;
-        }
-
-        public Point getPt1(){
-            return pt1;
-        }
-        public Point getPt2(){
-            return pt2;
-        }
-    }
-    public static class Vector{
-        public double a; // represents Direction in y direction
-        public double b; // represents x dir
-        public double c; // dot product direction
-        public double magnitude; //  ||v||
-
-        public Vector(){
-            a = 0;
-            b = 0;
-            c = 0;
-            magnitude = 0;
-        }
-
-        public Vector(double a, double b, double c){
-            this.a = a;
-            this.b = b;
-            this.c = c;
-            magnitude = Math.sqrt((a*a) + (b*b) + (c*c));
-        }
-    }
 }
