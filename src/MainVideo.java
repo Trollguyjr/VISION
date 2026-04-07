@@ -91,7 +91,6 @@ public class MainVideo extends JFrame{
             while(vid.isOpened()){
                 if(vid.read(mats)){
 
-                    //@TODO ADD COMMENTS AND FINISH THE CONFIGURATION FOR DETECTING
                     Core.flip(mats,mats,+1); // flips image as a reflection instead of inverted
                     Imgproc.cvtColor(mats,grayScale,Imgproc.COLOR_BGR2GRAY);
                     Imgproc.GaussianBlur(grayScale,blurScale,new Size(3,3),0);
@@ -101,21 +100,36 @@ public class MainVideo extends JFrame{
                     // Will store all the points that are graphed
                     List<MatOfPoint> contours = new ArrayList<>();
 
-                    // Should contain all the
+                    // Morph_Rect, in order to create a rectangular Kernel space and Morph_close to
+                    Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5,5));
+                    Imgproc.morphologyEx(edgeScale,edgeScale,Imgproc.MORPH_CLOSE,kernel);
+
                     Mat hierarchy = new Mat();
+
                     //CHAIN_APPROX... simplifies the mapping of items, E.g. if rectangle: only maps 4 corners
                     //when hieararchy is mapped
-                    Imgproc.findContours(edgeScale,contours,hierarchy,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
+                    Imgproc.findContours(edgeScale,contours,hierarchy,Imgproc.RETR_EXTERNAL,Imgproc.CHAIN_APPROX_SIMPLE);
 
                     for(MatOfPoint m : contours){
                         //Contour error, function takes in Mat
                         double actualArea = Imgproc.contourArea(m);
 
+                        //gets Matrix
+                        MatOfPoint2f contourVectors = new MatOfPoint2f(m.toArray());
+                        double contourPerimeter = Imgproc.arcLength(contourVectors,true);
+
+                        //
+                        MatOfPoint2f approx = new MatOfPoint2f();
+                        Imgproc.approxPolyDP(contourVectors,approx,0.02 * contourPerimeter,true);
+
                         Rect rectBound = Imgproc.boundingRect(m);
                         double rectArea = rectBound.height * rectBound.width;
-                        if(rectArea >= actualArea && rectArea >= MIN_AREA){
+
+                        if(rectArea >= MIN_AREA && approx.total() == 4){
                             System.out.println("Doing something trust: " + rectArea);
+                            System.out.println("Size of current: " + approx.total());
                             Imgproc.drawContours(mats,contours,-1,new Scalar(0,0,255));
+                            Imgproc.rectangle(mats,rectBound,new Scalar(255,0,0));
                         }
                     }
 
