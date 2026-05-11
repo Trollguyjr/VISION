@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Vector;
 
 public class MainVideo extends JFrame{
     public static int liveCounter = 0; // Counter only works while live. Change name of important saves
@@ -93,8 +94,8 @@ public class MainVideo extends JFrame{
 
                     Core.flip(mats,mats,+1); // flips image as a reflection instead of inverted
                     Imgproc.cvtColor(mats,grayScale,Imgproc.COLOR_BGR2GRAY);
-                    Imgproc.GaussianBlur(grayScale,blurScale,new Size(3,3),0);
-                    Imgproc.Canny(blurScale,edgeScale,50,100);
+                    Imgproc.GaussianBlur(grayScale,blurScale,new Size(5,5),0);
+                    Imgproc.Canny(blurScale,edgeScale,40,120);
                     System.out.println("loading");
 
                     // Will store all the points that are graphed
@@ -118,18 +119,54 @@ public class MainVideo extends JFrame{
                         MatOfPoint2f contourVectors = new MatOfPoint2f(m.toArray());
                         double contourPerimeter = Imgproc.arcLength(contourVectors,true);
 
-                        //
                         MatOfPoint2f approx = new MatOfPoint2f();
-                        Imgproc.approxPolyDP(contourVectors,approx,0.02 * contourPerimeter,true);
+                        Imgproc.approxPolyDP(contourVectors,approx,0.06 * contourPerimeter,true);
 
-                        Rect rectBound = Imgproc.boundingRect(m);
+                        MatOfPoint approxInt = new MatOfPoint();
+                        approx.convertTo(approxInt, CvType.CV_32S);
+
+                        Rect rectBound = Imgproc.boundingRect(approx);
                         double rectArea = rectBound.height * rectBound.width;
 
-                        if(rectArea >= MIN_AREA && approx.total() == 4){
-                            System.out.println("Doing something trust: " + rectArea);
-                            System.out.println("Size of current: " + approx.total());
-                            Imgproc.drawContours(mats,contours,-1,new Scalar(0,0,255));
-                            Imgproc.rectangle(mats,rectBound,new Scalar(255,0,0));
+                        System.out.println("APPROX TOTAL : " + approx.total());
+
+                        //Keep within 4 to 6 vertices since approx picks up multiple vertices despite
+                        if(rectArea >= MIN_AREA && 6 >= approx.total() && approx.total() >= 4){
+                            System.out.println("Convex? : " + Imgproc.isContourConvex(approxInt));
+                            List<MatOfPoint> validContour = new ArrayList<>();
+                            validContour.add(m);
+
+                            // Need to get the points to create a vector
+                            // Using the vectors we can check if the "plane" is rectangular by its dot prod
+                            Point[] points = approx.toArray();
+                            int edgeCounter = 0;
+                            for(int i = 0; i < points.length; i++){
+                                Point pointA = points[(i-1 + 4)%4];
+                                Point pointB = points[i];
+                                Point pointC = points[(i+1 + 4)%4];
+
+                                Point vectorAB = new Point(pointA.x-pointB.x,pointA.y-pointB.y);
+                                Point vectorCB = new Point(pointC.x-pointB.x, pointC.y-pointB.y);
+
+                                double lengthAB = Math.sqrt((vectorAB.x*vectorAB.x)+(vectorAB.y*vectorAB.y));
+                                double lengthCB = Math.sqrt((vectorCB.x*vectorCB.x)+(vectorCB.y*vectorCB.y));
+
+                                double dotProd = (vectorCB.x * vectorAB.x)+(vectorCB.y * vectorAB.y);
+                                double discrepancy = dotProd/(lengthAB * lengthCB);
+                                if(discrepancy <= .15){
+                                    edgeCounter++;
+                                }
+                                System.out.println("Discrepancy value" + discrepancy);
+                            }
+                            boolean isPerp = (edgeCounter >= 2);
+                            System.out.println(isPerp);
+
+//                            double fillArea = actualArea/rectArea;
+
+                            if(Imgproc.isContourConvex(approxInt) && isPerp) {
+                                Imgproc.drawContours(mats,validContour, 0, new Scalar(0, 0, 255));
+                                Imgproc.rectangle(mats, rectBound, new Scalar(255, 0, 0),5);
+                            }
                         }
                     }
 
